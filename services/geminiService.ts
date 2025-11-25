@@ -1,8 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DrawnCard, ReadingResponse, SpreadDefinition } from "../types";
 
-// Guidelines: The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Removed top-level initialization to prevent "process is not defined" crash in browser environments.
 const modelName = "gemini-2.5-flash";
 
 // --- Helper: Clean JSON String ---
@@ -19,17 +18,30 @@ export const getReadingInterpretation = async (
   cards: DrawnCard[]
 ): Promise<ReadingResponse> => {
   
-  if (!process.env.API_KEY) {
-    console.error("API Key is missing. Please check your environment configuration.");
+  let apiKey: string | undefined;
+
+  // Safely attempt to access process.env.API_KEY
+  // Using a try-catch block allows the app to load even if 'process' is not defined (common in Vite/Browser)
+  try {
+    apiKey = process.env.API_KEY;
+  } catch (error) {
+    // console.warn("Environment variable access issue (expected in some browser envs):", error);
+  }
+
+  if (!apiKey) {
+    console.error("API Key is missing.");
     return {
-      overallTheme: "API Key 未配置",
+      overallTheme: "配置缺失 (Configuration Missing)",
       cardInsights: cards.map(c => ({
         cardName: c.name,
         position: c.positionName,
-        interpretation: "请在 Vercel 后台配置 API_KEY 环境变量以使用 AI 解读功能。"
+        interpretation: "无法连接到宇宙智慧。请在 Vercel 的 Settings -> Environment Variables 中配置名为 'API_KEY' 的环境变量，然后重新部署。"
       }))
     };
   }
+
+  // Initialize the AI client only when needed
+  const ai = new GoogleGenAI({ apiKey: apiKey });
 
   const cardsDescription = cards.map(c => 
     `位置 [${c.positionName}]: ${c.name} (${c.isReversed ? "逆位 (Reversed)" : "正位 (Upright)"}) - 含义关键词: ${c.keywords.join(", ")}`
@@ -101,7 +113,7 @@ export const getReadingInterpretation = async (
       cardInsights: cards.map(c => ({
         cardName: c.name,
         position: c.positionName,
-        interpretation: "暂时无法获取详细解读，请稍后再试或检查网络连接。"
+        interpretation: "暂时无法获取详细解读，请稍后再试或检查 API Key 配置是否正确。"
       }))
     };
   }
