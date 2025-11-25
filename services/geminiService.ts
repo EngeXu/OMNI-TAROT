@@ -20,22 +20,34 @@ export const getReadingInterpretation = async (
   
   let apiKey: string | undefined;
 
-  // Safely attempt to access process.env.API_KEY
-  // Using a try-catch block allows the app to load even if 'process' is not defined (common in Vite/Browser)
+  // 1. Try accessing via import.meta.env (Vite / Modern Standards)
   try {
-    apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      apiKey = import.meta.env.VITE_API_KEY || import.meta.env.NEXT_PUBLIC_API_KEY;
+    }
   } catch (error) {
-    // console.warn("Environment variable access issue (expected in some browser envs):", error);
+    // ignore
+  }
+
+  // 2. Fallback to process.env (Node / Webpack / Next.js Standards)
+  if (!apiKey) {
+    try {
+      apiKey = process.env.NEXT_PUBLIC_API_KEY || process.env.API_KEY || process.env.VITE_API_KEY;
+    } catch (error) {
+      // ignore
+    }
   }
 
   if (!apiKey) {
     console.error("API Key is missing.");
     return {
-      overallTheme: "配置缺失 (Configuration Missing)",
+      overallTheme: "配置错误 (Configuration Error)",
       cardInsights: cards.map(c => ({
         cardName: c.name,
         position: c.positionName,
-        interpretation: "无法连接到宇宙智慧。请在 Vercel 的 Settings -> Environment Variables 中配置名为 'API_KEY' 的环境变量，然后重新部署。"
+        interpretation: "无法检测到 API Key。请在 Vercel 的 Settings -> Environment Variables 中添加名为 'VITE_API_KEY' 的变量，并填入您的 API Key，然后重新部署 (Redeploy)。"
       }))
     };
   }
@@ -113,7 +125,7 @@ export const getReadingInterpretation = async (
       cardInsights: cards.map(c => ({
         cardName: c.name,
         position: c.positionName,
-        interpretation: "暂时无法获取详细解读，请稍后再试或检查 API Key 配置是否正确。"
+        interpretation: "暂时无法获取详细解读。可能是 API Key 无效或服务暂时不可用。"
       }))
     };
   }
