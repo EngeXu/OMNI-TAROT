@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DrawnCard, ReadingResponse, SpreadDefinition } from "../types";
 
-const apiKey = process.env.API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
+// Guidelines: The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const modelName = "gemini-2.5-flash";
 
 // --- Helper: Clean JSON String ---
@@ -19,6 +19,18 @@ export const getReadingInterpretation = async (
   cards: DrawnCard[]
 ): Promise<ReadingResponse> => {
   
+  if (!process.env.API_KEY) {
+    console.error("API Key is missing. Please check your environment configuration.");
+    return {
+      overallTheme: "API Key 未配置",
+      cardInsights: cards.map(c => ({
+        cardName: c.name,
+        position: c.positionName,
+        interpretation: "请在 Vercel 后台配置 API_KEY 环境变量以使用 AI 解读功能。"
+      }))
+    };
+  }
+
   const cardsDescription = cards.map(c => 
     `位置 [${c.positionName}]: ${c.name} (${c.isReversed ? "逆位 (Reversed)" : "正位 (Upright)"}) - 含义关键词: ${c.keywords.join(", ")}`
   ).join("\n");
@@ -39,14 +51,6 @@ export const getReadingInterpretation = async (
     2. **单牌解析**: 针对每个位置结合牌义进行详细解读。
     
     语气: 客观、神秘、富有洞察力。请使用简体中文。
-    
-    Response format must be valid JSON matching this schema:
-    {
-      "overallTheme": "string",
-      "cardInsights": [
-        { "cardName": "string", "position": "string", "interpretation": "string" }
-      ]
-    }
   `;
 
   try {
@@ -55,6 +59,28 @@ export const getReadingInterpretation = async (
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            overallTheme: {
+              type: Type.STRING,
+              description: "概括这次占卜揭示的核心信息",
+            },
+            cardInsights: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  cardName: { type: Type.STRING },
+                  position: { type: Type.STRING },
+                  interpretation: { type: Type.STRING, description: "针对该位置的详细解读" },
+                },
+                required: ["cardName", "position", "interpretation"],
+              },
+            },
+          },
+          required: ["overallTheme", "cardInsights"],
+        },
       }
     });
 
@@ -71,11 +97,11 @@ export const getReadingInterpretation = async (
   } catch (error) {
     console.error("Gemini API Error:", error);
     return {
-      overallTheme: "当前能量连接受阻，请检查您的网络或API设置。",
+      overallTheme: "连接宇宙智慧时遇到干扰",
       cardInsights: cards.map(c => ({
         cardName: c.name,
         position: c.positionName,
-        interpretation: "无法获取详细解读，请凭直觉感受牌面能量。"
+        interpretation: "暂时无法获取详细解读，请稍后再试或检查网络连接。"
       }))
     };
   }
