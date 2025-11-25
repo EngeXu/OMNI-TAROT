@@ -23,7 +23,7 @@ export const getReadingInterpretation = async (
   // Safely attempt to access process.env.API_KEY
   // Using a try-catch block allows the app to load even if 'process' is not defined (common in Vite/Browser)
   try {
-    apiKey = process.env.API_KEY;
+    apiKey = process.env.NEXT_PUBLIC_API_KEY;
   } catch (error) {
     // console.warn("Environment variable access issue (expected in some browser envs):", error);
   }
